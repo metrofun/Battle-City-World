@@ -1,0 +1,19 @@
+{
+  "name": "Battle City World",
+  "version": "1.0",
+  "homepage": "http://github.com/metrofun/Battle-City-World",
+  "authors": [
+    "Dmytrii Shchadei <gmetrofun@gmail.com>"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "phaser-official": "~2.0.0"
+  }
+}
