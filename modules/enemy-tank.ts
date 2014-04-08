@@ -25,7 +25,7 @@ module BCW {
             this.game.physics.enable(this.tank, Phaser.Physics.ARCADE);
             this.tank.body.immovable = false;
             this.tank.body.collideWorldBounds = true;
-            this.tank.body.bounce.setTo(1, 1);
+            // this.tank.body.bounce.setTo(1, 1);
 
             this.tank.angle = this.game.rnd.angle();
 

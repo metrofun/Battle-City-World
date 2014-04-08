@@ -60,8 +60,8 @@ var BCW;
             this.game.physics.enable(this.tank, Phaser.Physics.ARCADE);
             this.tank.body.immovable = false;
             this.tank.body.collideWorldBounds = true;
-            this.tank.body.bounce.setTo(1, 1);
 
+            // this.tank.body.bounce.setTo(1, 1);
             this.tank.angle = this.game.rnd.angle();
 
             this.game.physics.arcade.velocityFromRotation(this.tank.rotation, 100, this.tank.body.velocity);
@@ -127,10 +127,59 @@ var BCW;
 })(BCW || (BCW = {}));
 var BCW;
 (function (BCW) {
+    var SnapType;
+    (function (SnapType) {
+        SnapType[SnapType["TANK"] = 0] = "TANK";
+        SnapType[SnapType["TURRET"] = 1] = "TURRET";
+    })(SnapType || (SnapType = {}));
+
+    var UserControl = (function () {
+        function UserControl(game, tank) {
+            this.game = game;
+            this.tank = tank;
+            this.snapMap = {};
+            this.movePoint = new Phaser.Point();
+            this.vector = new Phaser.Point();
+        }
+        UserControl.prototype.onDown = function (pointer, isDoubleTap) {
+            var halfWidth = this.game.camera.view.width >> 1;
+
+            this.snapMap[pointer.id] = {
+                point: new Phaser.Point(pointer.x, pointer.y),
+                type: pointer.x > halfWidth ? 1 /* TURRET */ : 0 /* TANK */
+            };
+        };
+
+        UserControl.prototype.onMove = function (pointer, x, y) {
+            var snap;
+
+            if (this.snapMap[pointer.id]) {
+                snap = this.snapMap[pointer.id];
+                this.movePoint.set(x, y);
+                Phaser.Point.subtract(this.movePoint, snap.point, this.vector);
+                if (snap.type === 0 /* TANK */) {
+                    this.tank.move(this.vector.getMagnitude() * 2, Math.atan2(this.vector.y, this.vector.x));
+                }
+            }
+        };
+
+        UserControl.prototype.onUp = function (pointer) {
+            delete this.snapMap[pointer.id];
+            this.tank.stop();
+        };
+
+        UserControl.prototype.enable = function () {
+            this.game.input.onDown.add(this.onDown, this);
+            this.game.input.setMoveCallback(this.onMove, this);
+            this.game.input.onUp.add(this.onUp, this);
+        };
+        return UserControl;
+    })();
     var Level1 = (function (_super) {
         __extends(Level1, _super);
         function Level1() {
             _super.apply(this, arguments);
+            this.turretAngle = 0;
             this.fireRate = 0;
             this.nextFire = 0;
             this.currentSpeed = 0;
@@ -143,19 +192,9 @@ var BCW;
             this.land = this.game.add.tileSprite(0, 0, 800, 600, 'earth');
             this.land.fixedToCamera = true;
 
-            //  The base of our tank
-            this.tank = this.game.add.sprite(0, 0, 'tank', 'tank1');
-            this.tank.anchor.setTo(0.5, 0.5);
-            this.tank.animations.add('move', ['tank1', 'tank2', 'tank3', 'tank4', 'tank5', 'tank6'], 20, true);
-
-            //  This will force it to decelerate and limit its speed
-            this.game.physics.enable(this.tank, Phaser.Physics.ARCADE);
-            this.tank.body.drag.set(0.2, 0);
-            this.tank.body.maxVelocity.setTo(400, 400);
-            this.tank.body.collideWorldBounds = true;
-
-            this.turret = this.game.add.sprite(0, 0, 'tank', 'turret');
-            this.turret.anchor.setTo(0.3, 0.5);
+            this.tank = new BCW.Tank(this.game, 0, 0);
+            this.game.add.existing(this.tank);
+            (new UserControl(this.game, this.tank)).enable();
 
             //  The enemies bullet group
             this.enemyBullets = this.game.add.group();
@@ -175,10 +214,6 @@ var BCW;
                 this.enemies.push(new BCW.EnemyTank(i.toString(), this.game, this.tank, this.enemyBullets));
             }
 
-            //  A shadow below our tank
-            this.shadow = this.game.add.sprite(0, 0, 'tank', 'shadow');
-            this.shadow.anchor.setTo(0.5, 0.5);
-
             //  Our bullet group
             this.bullets = this.game.add.group();
             this.bullets.enableBody = true;
@@ -196,9 +231,6 @@ var BCW;
                 explosionAnimation.anchor.setTo(0.5, 0.5);
                 explosionAnimation.animations.add('kaboom');
             }
-
-            this.tank.bringToTop();
-            this.turret.bringToTop();
 
             this.game.camera.follow(this.tank);
             this.game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300);
@@ -221,41 +253,11 @@ var BCW;
                 }
             }
 
-            if (this.cursors.left.isDown) {
-                this.tank.angle -= 4;
-            } else if (this.cursors.right.isDown) {
-                this.tank.angle += 4;
-            }
-
-            if (this.cursors.up.isDown) {
-                //  The speed we'll travel at
-                this.currentSpeed = 300;
-            } else {
-                if (this.currentSpeed > 0) {
-                    this.currentSpeed -= 4;
-                }
-            }
-
-            if (this.currentSpeed > 0) {
-                this.game.physics.arcade.velocityFromRotation(this.tank.rotation, this.currentSpeed, this.tank.body.velocity);
-            }
-
             this.land.tilePosition.x = -this.game.camera.x;
             this.land.tilePosition.y = -this.game.camera.y;
 
-            //  Position all the parts and align rotations
-            this.shadow.x = this.tank.x;
-            this.shadow.y = this.tank.y;
-            this.shadow.rotation = this.tank.rotation;
-
-            this.turret.x = this.tank.x;
-            this.turret.y = this.tank.y;
-
-            this.turret.rotation = this.game.physics.arcade.angleToPointer(this.turret);
-
-            if (this.game.input.activePointer.isDown) {
-                //  Boom!
-                this.fire();
+            if (this.game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
+                this.tank.fire(this.bullets);
             }
         };
 
@@ -272,17 +274,6 @@ var BCW;
                 var explosionAnimation = this.explosions.getFirstExists(false);
                 explosionAnimation.reset(tank.x, tank.y);
                 explosionAnimation.play('kaboom', 30, false, true);
-            }
-        };
-
-        Level1.prototype.fire = function () {
-            if (this.game.time.now > this.nextFire && this.bullets.countDead() > 0) {
-                this.nextFire = this.game.time.now + this.fireRate;
-
-                var bullet = this.bullets.getFirstExists(false);
-
-                bullet.reset(this.turret.x, this.turret.y);
-                bullet.rotation = this.game.physics.arcade.moveToPointer(bullet, 1000, this.input.activePointer, 500);
             }
         };
         return Level1;
@@ -392,4 +383,71 @@ var BCW;
         return Preloader;
     })(Phaser.State);
     BCW.Preloader = Preloader;
+})(BCW || (BCW = {}));
+var BCW;
+(function (BCW) {
+    var Tank = (function (_super) {
+        __extends(Tank, _super);
+        function Tank(game, x, y) {
+            _super.call(this, game, x, y, 'tank', 'tank1');
+            this.game = game;
+            this.x = x;
+            this.y = y;
+            this.acceleration = 300;
+            this.angularVelocity = 3;
+            this.deltaVelocity = 0;
+            this.deltaRotation = 0;
+            this.bulletSpeed = 1000;
+            this.fireRate = 3000;
+            this.nextFire = 0;
+            this.anchor.setTo(0.5, 0.5);
+            game.physics.enable(this, Phaser.Physics.ARCADE);
+            this.body.collideWorldBounds = true;
+            var shadow = new Phaser.Sprite(game, x, y, 'tank', 'shadow');
+            shadow.x = -shadow.width / 2;
+            shadow.y = -shadow.height / 2;
+            shadow.z = 0;
+            this.turret = new Phaser.Sprite(game, x, y, 'tank', 'turret');
+            this.turret.x = -this.turret.width / 2;
+            this.turret.y = -this.turret.height / 2;
+
+            this.addChild(shadow);
+            this.addChild(this.turret);
+        }
+        Tank.prototype.fire = function (bullets) {
+            if (this.game.time.now > this.nextFire && bullets.countDead() > 0) {
+                this.nextFire = this.game.time.now + this.fireRate;
+
+                var bullet = bullets.getFirstExists(false);
+
+                bullet.reset(this.turret.x, this.turret.y);
+                bullet.angle = this.turret.angle;
+
+                this.game.physics.arcade.velocityFromRotation(this.turret.rotation, this.bulletSpeed, bullet.body.velocity);
+            }
+        };
+        Tank.prototype.move = function (speed, rotation) {
+            this.rotation = rotation;
+
+            this.game.physics.arcade.velocityFromRotation(rotation, speed, this.body.velocity);
+        };
+        Tank.prototype.stop = function () {
+            this.body.velocity.x = 0;
+            this.body.velocity.y = 0;
+        };
+        Tank.prototype.update = function () {
+            // this.rotation = this.body.rotation;
+            // this.body.rotation += this.deltaRotation;
+            // this.body.rotation = this.game.physics.arcade.angleToPointer(this);
+            // this.game.physics.arcade.velocityFromRotation(
+            // this.body.rotation,
+            // this.body.velocity.getMagnitude() + this.deltaVelocity,
+            // this.body.velocity
+            // );
+            // this.deltaRotation = 0;
+            // this.deltaVelocity = 0;
+        };
+        return Tank;
+    })(Phaser.Sprite);
+    BCW.Tank = Tank;
 })(BCW || (BCW = {}));
