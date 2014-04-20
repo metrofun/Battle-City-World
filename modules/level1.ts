@@ -3,18 +3,17 @@ module BCW {
 
     interface Snap {
         point: Phaser.Point;
-       type: SnapType;
+        type: SnapType;
     }
 
     class UserControl {
-        snapMap = {};
+        snapMap:  {[index: number]: Snap; } = {};
         movePoint = new Phaser.Point();
         vector = new Phaser.Point();
 
 
         constructor(public game:Phaser.Game, public tank:Tank) {
         }
-
         onDown(pointer:Phaser.Pointer, isDoubleTap) {
             var halfWidth = this.game.camera.view.width >> 1;
 
@@ -30,23 +29,27 @@ module BCW {
             if (this.snapMap[pointer.id]) {
                 snap = this.snapMap[pointer.id];
                 this.movePoint.set(x, y)
-                Phaser.Point.subtract(
-                    this.movePoint,
-                    snap.point,
-                    this.vector
-                );
+                Phaser.Point.subtract(this.movePoint, snap.point, this.vector);
                 if (snap.type === SnapType.TANK) {
                     this.tank.move(
                         this.vector.getMagnitude() * 2,
                         Math.atan2(this.vector.y, this.vector.x)
                     );
+                } else if (snap.type === SnapType.TURRET) {
+                    this.tank.aim(Math.atan2(this.vector.y, this.vector.x));
                 }
+
             }
         }
 
         onUp(pointer:Phaser.Pointer) {
+            var snap = this.snapMap[pointer.id];
+            if (snap.type === SnapType.TANK) {
+                this.tank.stop();
+            } else if (snap.type === SnapType.TURRET) {
+                this.tank.fire();
+            }
             delete this.snapMap[pointer.id];
-            this.tank.stop();
         }
 
         enable() {
@@ -55,23 +58,37 @@ module BCW {
             this.game.input.onUp.add(this.onUp, this);
         }
     }
-    export class Level1 extends Phaser.State {
-        cursors:{
-            up: Phaser.Key;
-            down: Phaser.Key;
-            left: Phaser.Key;
-            right: Phaser.Key;
+    export class Bullet extends Phaser.Sprite {
+        speed = 1000;
+        damageAmount = 2;
+        constructor(public owner:Tank, public x:number, public y:number) {
+            super(owner.game, x, y, 'bullet');
+            this.anchor.setTo(0.5, 0.5);
+            this.game.physics.enable(this, Phaser.Physics.ARCADE);
+            this.checkWorldBounds = true;
+            this.outOfBoundsKill = true;
+            this.exists = false;
+            this.visible = false;
+            this.alive = false;
         }
+        fire() {
+            this.game.physics.arcade.velocityFromRotation(
+                this.rotation,
+                this.speed,
+                this.body.velocity
+            );
+        }
+    }
+    export class Level1 extends Phaser.State {
         turretAngle = 0;
         fireRate = 0;
         nextFire = 0;
         currentSpeed = 0;
         explosions:Phaser.Group;
-        enemyBullets:Phaser.Group;
         bullets:Phaser.Group;
+        tanks:Phaser.Group;
         land:Phaser.TileSprite;
         tank:Tank;
-        enemies:EnemyTank[] = [];
 
         create() {
             this.game.world.setBounds(-1000, -1000, 2000, 2000);
@@ -80,42 +97,21 @@ module BCW {
             this.land = this.game.add.tileSprite(0, 0, 800, 600, 'earth');
             this.land.fixedToCamera = true;
 
-            this.tank = new Tank(this.game, 0, 0);
-            this.game.add.existing(this.tank);
+            this.tank = new Tank(this, 0, 0);
             (new UserControl(this.game, this.tank)).enable();
 
-            //  The enemies bullet group
-            this.enemyBullets = this.game.add.group();
-            this.enemyBullets.enableBody = true;
-            this.enemyBullets.physicsBodyType = Phaser.Physics.ARCADE;
-            this.enemyBullets.createMultiple(100, 'bullet');
-            this.enemyBullets.setAll('anchor.x', 0.5);
-            this.enemyBullets.setAll('anchor.y', 0.5);
-            this.enemyBullets.setAll('outOfBoundsKill', true);
-            this.enemyBullets.setAll('checkWorldBounds', true);
+            this.tanks = this.game.add.group();
+            this.tanks.add(this.tank);
 
-            //  Create some baddies to waste :)
-            var enemiesTotal = 20;
-            var enemiesAlive = 20;
+            // for (var i = 0; i < enemiesTotal; i++) {
+                // this.tanks.add(new EnemyTank(i.toString(), this.game, this.tank, this.bullets));
+            // }
 
-            for (var i = 0; i < enemiesTotal; i++) {
-                this.enemies.push(new EnemyTank(i.toString(), this.game, this.tank, this.enemyBullets));
-            }
-
-            //  Our bullet group
             this.bullets = this.game.add.group();
-            this.bullets.enableBody = true;
-            this.bullets.physicsBodyType = Phaser.Physics.ARCADE;
-            this.bullets.createMultiple(30, 'bullet', 0, false);
-            this.bullets.setAll('anchor.x', 0.5);
-            this.bullets.setAll('anchor.y', 0.5);
-            this.bullets.setAll('outOfBoundsKill', true);
-            this.bullets.setAll('checkWorldBounds', true);
 
             //  Explosion pool
             this.explosions = this.game.add.group();
-            for (var i = 0; i < 10; i++)
-            {
+            for (var i = 0; i < 10; i++) {
                 var explosionAnimation = this.explosions.create(0, 0, 'kaboom', [0], false);
                 explosionAnimation.anchor.setTo(0.5, 0.5);
                 explosionAnimation.animations.add('kaboom');
@@ -124,50 +120,35 @@ module BCW {
             this.game.camera.follow(this.tank);
             this.game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300);
             this.game.camera.focusOnXY(0, 0);
-
-            this.cursors = this.input.keyboard.createCursorKeys();
         }
 
         update() {
-            this.game.physics.arcade.overlap(this.enemyBullets, this.tank, this.bulletHitPlayer, null, this);
-
-            var enemiesAlive = 0;
-
-            for (var i = 0; i < this.enemies.length; i++)
-            {
-                if (this.enemies[i].alive)
-                {
-                    enemiesAlive++;
-                    this.game.physics.arcade.collide(this.tank, this.enemies[i].tank);
-                    this.game.physics.arcade.overlap(this.bullets, this.enemies[i].tank, this.bulletHitEnemy, null, this);
-                    this.enemies[i].update();
-                }
-            }
-
+            this.game.physics.arcade.overlap(this.bullets, this.tanks, this.onBulletHit, null, this);
+            this.game.physics.arcade.collide(this.tanks, this.tanks);
+            this.tanks.callAll('update');
 
             this.land.tilePosition.x = - this.game.camera.x;
             this.land.tilePosition.y = - this.game.camera.y;
+        }
 
-            if (this.game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
-                this.tank.fire(this.bullets);
-            }
+        onBulletHit(tank:Tank, bullet:Bullet) {
         }
 
         bulletHitPlayer(tank:Phaser.Sprite, bullet:Phaser.Sprite) {
             bullet.kill();
         }
 
-        bulletHitEnemy(tank:Phaser.Sprite, bullet:Phaser.Sprite) {
-            bullet.kill();
+        // bulletHitEnemy(tank:Phaser.Sprite, bullet:Phaser.Sprite) {
+            // bullet.kill();
 
-            var destroyed:number = this.enemies[tank.name].damage();
+            // var destroyed:number = this.enemies[tank.name].damage();
 
-            if (destroyed)
-            {
-                var explosionAnimation = this.explosions.getFirstExists(false);
-                explosionAnimation.reset(tank.x, tank.y);
-                explosionAnimation.play('kaboom', 30, false, true);
-            }
-        }
+            // if (destroyed)
+            // {
+                // var explosionAnimation = this.explosions.getFirstExists(false);
+                // explosionAnimation.reset(tank.x, tank.y);
+                // explosionAnimation.play('kaboom', 30, false, true);
+            // }
+        // }
     }
 }

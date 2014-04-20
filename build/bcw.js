@@ -159,13 +159,20 @@ var BCW;
                 Phaser.Point.subtract(this.movePoint, snap.point, this.vector);
                 if (snap.type === 0 /* TANK */) {
                     this.tank.move(this.vector.getMagnitude() * 2, Math.atan2(this.vector.y, this.vector.x));
+                } else if (snap.type === 1 /* TURRET */) {
+                    this.tank.aim(Math.atan2(this.vector.y, this.vector.x));
                 }
             }
         };
 
         UserControl.prototype.onUp = function (pointer) {
+            var snap = this.snapMap[pointer.id];
+            if (snap.type === 0 /* TANK */) {
+                this.tank.stop();
+            } else if (snap.type === 1 /* TURRET */) {
+                this.tank.fire();
+            }
             delete this.snapMap[pointer.id];
-            this.tank.stop();
         };
 
         UserControl.prototype.enable = function () {
@@ -175,6 +182,29 @@ var BCW;
         };
         return UserControl;
     })();
+    var Bullet = (function (_super) {
+        __extends(Bullet, _super);
+        function Bullet(owner, x, y) {
+            _super.call(this, owner.game, x, y, 'bullet');
+            this.owner = owner;
+            this.x = x;
+            this.y = y;
+            this.speed = 1000;
+            this.damageAmount = 2;
+            this.anchor.setTo(0.5, 0.5);
+            this.game.physics.enable(this, Phaser.Physics.ARCADE);
+            this.checkWorldBounds = true;
+            this.outOfBoundsKill = true;
+            this.exists = false;
+            this.visible = false;
+            this.alive = false;
+        }
+        Bullet.prototype.fire = function () {
+            this.game.physics.arcade.velocityFromRotation(this.rotation, this.speed, this.body.velocity);
+        };
+        return Bullet;
+    })(Phaser.Sprite);
+    BCW.Bullet = Bullet;
     var Level1 = (function (_super) {
         __extends(Level1, _super);
         function Level1() {
@@ -183,7 +213,6 @@ var BCW;
             this.fireRate = 0;
             this.nextFire = 0;
             this.currentSpeed = 0;
-            this.enemies = [];
         }
         Level1.prototype.create = function () {
             this.game.world.setBounds(-1000, -1000, 2000, 2000);
@@ -192,37 +221,16 @@ var BCW;
             this.land = this.game.add.tileSprite(0, 0, 800, 600, 'earth');
             this.land.fixedToCamera = true;
 
-            this.tank = new BCW.Tank(this.game, 0, 0);
-            this.game.add.existing(this.tank);
+            this.tank = new BCW.Tank(this, 0, 0);
             (new UserControl(this.game, this.tank)).enable();
 
-            //  The enemies bullet group
-            this.enemyBullets = this.game.add.group();
-            this.enemyBullets.enableBody = true;
-            this.enemyBullets.physicsBodyType = Phaser.Physics.ARCADE;
-            this.enemyBullets.createMultiple(100, 'bullet');
-            this.enemyBullets.setAll('anchor.x', 0.5);
-            this.enemyBullets.setAll('anchor.y', 0.5);
-            this.enemyBullets.setAll('outOfBoundsKill', true);
-            this.enemyBullets.setAll('checkWorldBounds', true);
+            this.tanks = this.game.add.group();
+            this.tanks.add(this.tank);
 
-            //  Create some baddies to waste :)
-            var enemiesTotal = 20;
-            var enemiesAlive = 20;
-
-            for (var i = 0; i < enemiesTotal; i++) {
-                this.enemies.push(new BCW.EnemyTank(i.toString(), this.game, this.tank, this.enemyBullets));
-            }
-
-            //  Our bullet group
+            // for (var i = 0; i < enemiesTotal; i++) {
+            // this.tanks.add(new EnemyTank(i.toString(), this.game, this.tank, this.bullets));
+            // }
             this.bullets = this.game.add.group();
-            this.bullets.enableBody = true;
-            this.bullets.physicsBodyType = Phaser.Physics.ARCADE;
-            this.bullets.createMultiple(30, 'bullet', 0, false);
-            this.bullets.setAll('anchor.x', 0.5);
-            this.bullets.setAll('anchor.y', 0.5);
-            this.bullets.setAll('outOfBoundsKill', true);
-            this.bullets.setAll('checkWorldBounds', true);
 
             //  Explosion pool
             this.explosions = this.game.add.group();
@@ -235,46 +243,22 @@ var BCW;
             this.game.camera.follow(this.tank);
             this.game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300);
             this.game.camera.focusOnXY(0, 0);
-
-            this.cursors = this.input.keyboard.createCursorKeys();
         };
 
         Level1.prototype.update = function () {
-            this.game.physics.arcade.overlap(this.enemyBullets, this.tank, this.bulletHitPlayer, null, this);
-
-            var enemiesAlive = 0;
-
-            for (var i = 0; i < this.enemies.length; i++) {
-                if (this.enemies[i].alive) {
-                    enemiesAlive++;
-                    this.game.physics.arcade.collide(this.tank, this.enemies[i].tank);
-                    this.game.physics.arcade.overlap(this.bullets, this.enemies[i].tank, this.bulletHitEnemy, null, this);
-                    this.enemies[i].update();
-                }
-            }
+            this.game.physics.arcade.overlap(this.bullets, this.tanks, this.onBulletHit, null, this);
+            this.game.physics.arcade.collide(this.tanks, this.tanks);
+            this.tanks.callAll('update');
 
             this.land.tilePosition.x = -this.game.camera.x;
             this.land.tilePosition.y = -this.game.camera.y;
+        };
 
-            if (this.game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
-                this.tank.fire(this.bullets);
-            }
+        Level1.prototype.onBulletHit = function (tank, bullet) {
         };
 
         Level1.prototype.bulletHitPlayer = function (tank, bullet) {
             bullet.kill();
-        };
-
-        Level1.prototype.bulletHitEnemy = function (tank, bullet) {
-            bullet.kill();
-
-            var destroyed = this.enemies[tank.name].damage();
-
-            if (destroyed) {
-                var explosionAnimation = this.explosions.getFirstExists(false);
-                explosionAnimation.reset(tank.x, tank.y);
-                explosionAnimation.play('kaboom', 30, false, true);
-            }
         };
         return Level1;
     })(Phaser.State);
@@ -388,42 +372,49 @@ var BCW;
 (function (BCW) {
     var Tank = (function (_super) {
         __extends(Tank, _super);
-        function Tank(game, x, y) {
-            _super.call(this, game, x, y, 'tank', 'tank1');
-            this.game = game;
+        function Tank(level, x, y) {
+            _super.call(this, level.game, x, y, 'tank', 'tank1');
+            this.level = level;
             this.x = x;
             this.y = y;
-            this.acceleration = 300;
-            this.angularVelocity = 3;
-            this.deltaVelocity = 0;
-            this.deltaRotation = 0;
-            this.bulletSpeed = 1000;
-            this.fireRate = 3000;
+            this.BULLET_POOL_SIZE = 10;
+            this.fireRate = 300;
             this.nextFire = 0;
             this.anchor.setTo(0.5, 0.5);
-            game.physics.enable(this, Phaser.Physics.ARCADE);
+            this.game.physics.enable(this, Phaser.Physics.ARCADE);
             this.body.collideWorldBounds = true;
-            var shadow = new Phaser.Sprite(game, x, y, 'tank', 'shadow');
-            shadow.x = -shadow.width / 2;
-            shadow.y = -shadow.height / 2;
+            this.addSpriteChilds();
+            this.initBulletPool();
+        }
+        Tank.prototype.addSpriteChilds = function () {
+            var shadow = new Phaser.Sprite(this.game, this.x, this.y, 'tank', 'shadow');
             shadow.z = 0;
-            this.turret = new Phaser.Sprite(game, x, y, 'tank', 'turret');
-            this.turret.x = -this.turret.width / 2;
-            this.turret.y = -this.turret.height / 2;
+            shadow.anchor.setTo(0.5, 0.5);
+            this.turret = new Phaser.Sprite(this.game, this.x, this.y, 'tank', 'turret');
+            this.turret.anchor.setTo(0.3, 0.5);
 
             this.addChild(shadow);
             this.addChild(this.turret);
-        }
-        Tank.prototype.fire = function (bullets) {
-            if (this.game.time.now > this.nextFire && bullets.countDead() > 0) {
+        };
+        Tank.prototype.initBulletPool = function () {
+            var i;
+            this.bullets = this.game.add.group();
+            for (i = 0; i < this.BULLET_POOL_SIZE; i++) {
+                this.bullets.add(new BCW.Bullet(this, 0, 0));
+            }
+        };
+        Tank.prototype.fire = function () {
+            var bullet;
+
+            if (this.game.time.now > this.nextFire && this.bullets.countDead() > 0) {
                 this.nextFire = this.game.time.now + this.fireRate;
 
-                var bullet = bullets.getFirstExists(false);
+                bullet = this.bullets.getFirstExists(false);
+                bullet.reset(this.x, this.y);
+                bullet.rotation = this.rotation + this.turret.rotation;
+                this.level.bullets.add(bullet);
 
-                bullet.reset(this.turret.x, this.turret.y);
-                bullet.angle = this.turret.angle;
-
-                this.game.physics.arcade.velocityFromRotation(this.turret.rotation, this.bulletSpeed, bullet.body.velocity);
+                bullet.fire();
             }
         };
         Tank.prototype.move = function (speed, rotation) {
@@ -431,21 +422,14 @@ var BCW;
 
             this.game.physics.arcade.velocityFromRotation(rotation, speed, this.body.velocity);
         };
+        Tank.prototype.aim = function (rotation) {
+            this.turret.rotation = rotation - this.rotation;
+        };
         Tank.prototype.stop = function () {
             this.body.velocity.x = 0;
             this.body.velocity.y = 0;
         };
         Tank.prototype.update = function () {
-            // this.rotation = this.body.rotation;
-            // this.body.rotation += this.deltaRotation;
-            // this.body.rotation = this.game.physics.arcade.angleToPointer(this);
-            // this.game.physics.arcade.velocityFromRotation(
-            // this.body.rotation,
-            // this.body.velocity.getMagnitude() + this.deltaVelocity,
-            // this.body.velocity
-            // );
-            // this.deltaRotation = 0;
-            // this.deltaVelocity = 0;
         };
         return Tank;
     })(Phaser.Sprite);

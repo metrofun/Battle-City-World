@@ -19,6 +19,7 @@
     "node-static": "~0.7.3"
   },
   "dependencies": {
-    "gulp-ts": "0.0.10"
+    "gulp-ts": "0.0.10",
+    "gulp-util": "~2.2.14"
   }
 }
