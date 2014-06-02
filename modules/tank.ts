@@ -6,6 +6,7 @@ module BCW {
         bullets: Phaser.Group;
         fireRate = 300; //ms
         nextFire = 0;
+        private gunpoint = new Phaser.Point();
 
         constructor(public level:Level1, public x:number, public y:number) {
             super(level.game, x, y, 'tank', 'tank1');
@@ -32,6 +33,19 @@ module BCW {
                 this.bullets.add(new Bullet(this, 0, 0));
             }
         }
+        private updateGunpoint() {
+            var gunpoint = this.world.clone(this.gunpoint);
+                    // .subtract(this.width / 2, this.height / 2);
+
+            // return Phaser.Point.rotate(
+                // this.gunpoint,
+                // this.gunpoint.x,
+                // this.gunpoint.y,
+                // this.rotation + this.turret.rotation,
+                // false,
+                // 0.7 * this.turret.height
+            // )
+        }
         fire() {
             var bullet:Bullet;
 
@@ -39,9 +53,10 @@ module BCW {
                 this.nextFire = this.game.time.now + this.fireRate;
 
                 bullet = this.bullets.getFirstExists(false);
+                this.updateGunpoint();
                 bullet.reset(this.x, this.y);
                 bullet.rotation = this.rotation + this.turret.rotation;
-                this.level.bullets.add(bullet);
+                // this.level.bullets.add(bullet);
 
                 bullet.fire();
             }
@@ -59,10 +74,10 @@ module BCW {
             this.turret.rotation = rotation - this.rotation;
         }
         stop() {
-            this.body.velocity.x = 0;
-            this.body.velocity.y = 0;
+            this.body.velocity.setTo(0, 0);
         }
         update() {
+            this.game.debug.spriteCoords(this, 16, 16);
         }
     }
 }

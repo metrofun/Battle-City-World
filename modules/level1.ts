@@ -8,8 +8,8 @@ module BCW {
 
     class UserControl {
         snapMap:  {[index: number]: Snap; } = {};
-        movePoint = new Phaser.Point();
-        vector = new Phaser.Point();
+        private movePoint = new Phaser.Point();
+        private vector = new Phaser.Point();
 
 
         constructor(public game:Phaser.Game, public tank:Tank) {
@@ -63,7 +63,7 @@ module BCW {
         damageAmount = 2;
         constructor(public owner:Tank, public x:number, public y:number) {
             super(owner.game, x, y, 'bullet');
-            this.anchor.setTo(0.5, 0.5);
+            this.anchor.setTo(0, 0.5);
             this.game.physics.enable(this, Phaser.Physics.ARCADE);
             this.checkWorldBounds = true;
             this.outOfBoundsKill = true;
@@ -72,11 +72,16 @@ module BCW {
             this.alive = false;
         }
         fire() {
-            this.game.physics.arcade.velocityFromRotation(
-                this.rotation,
-                this.speed,
-                this.body.velocity
-            );
+            // this.game.physics.arcade.velocityFromRotation(
+                // this.rotation,
+                // this.speed,
+                // this.body.velocity
+            // );
+        }
+        update() {
+            if (this.visible) {
+                this.owner.game.debug.spriteCoords(this, 16, 116, 'red');
+            }
         }
     }
     export class Level1 extends Phaser.State {
@@ -129,6 +134,7 @@ module BCW {
 
             this.land.tilePosition.x = - this.game.camera.x;
             this.land.tilePosition.y = - this.game.camera.y;
+            // this.game.debug.inputInfo(16, 16);
         }
 
         onBulletHit(tank:Tank, bullet:Bullet) {

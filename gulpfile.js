@@ -5,12 +5,12 @@ var gulp = require('gulp'),
     };
 
 gulp.task('typescript', function () {
-    var ts = require('gulp-ts');
+    var ts = require('gulp-tsc');
+
     return gulp.src(paths.ts).pipe(ts({
-        target : 'ES5',
-        out: 'bcw.js',
-        module: null,
-        noImplicitAny : false
+        target: 'ES5',
+        emitError: false,
+        out: 'bcw.js'
     })).pipe(gulp.dest(paths.dest));
 });
 gulp.task('static-server', function (next) {
