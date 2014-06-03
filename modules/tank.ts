@@ -54,7 +54,11 @@ module BCW {
 
                 bullet = this.bullets.getFirstExists(false);
                 this.updateGunpoint();
+                // bullet.x = this.x;
+                // bullet.y = this.y;
                 bullet.reset(this.x, this.y);
+                bullet.anchor.setTo(0, 0.5);
+                console.log(bullet.x, bullet.y);
                 bullet.rotation = this.rotation + this.turret.rotation;
                 // this.level.bullets.add(bullet);
 
@@ -77,7 +81,8 @@ module BCW {
             this.body.velocity.setTo(0, 0);
         }
         update() {
-            this.game.debug.spriteInfo(this, 16, 16);
+            this.game.debug.inputInfo(16, 16);
+            this.game.debug.spriteInfo(this, 16, 116)
         }
     }
 }

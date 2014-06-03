@@ -35,7 +35,6 @@ gulp.task('watch', function () {
     gulp.watch(paths.ts, ['typescript']);
 
     gulp.watch([paths.dest, paths.file].join('/')).on('change', function (file) {
-        console.log(file);
         server.changed(file.path);
     });
 });

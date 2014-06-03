@@ -191,7 +191,6 @@ var BCW;
             this.y = y;
             this.speed = 1000;
             this.damageAmount = 2;
-            this.anchor.setTo(0, 100);
             this.game.physics.enable(this, Phaser.Physics.ARCADE);
             this.checkWorldBounds = true;
             this.outOfBoundsKill = true;
@@ -200,15 +199,11 @@ var BCW;
             this.alive = false;
         }
         Bullet.prototype.fire = function () {
-            // this.game.physics.arcade.velocityFromRotation(
-            // this.rotation,
-            // this.speed,
-            // this.body.velocity
-            // );
+            this.game.physics.arcade.velocityFromRotation(this.rotation, this.speed, this.body.velocity);
         };
         Bullet.prototype.update = function () {
             if (this.visible) {
-                this.owner.game.debug.spriteInfo(this, 16, 116, 'blue');
+                this.owner.game.debug.spriteInfo(this, 16, 216);
             }
         };
         return Bullet;
@@ -434,7 +429,12 @@ var BCW;
 
                 bullet = this.bullets.getFirstExists(false);
                 this.updateGunpoint();
+
+                // bullet.x = this.x;
+                // bullet.y = this.y;
                 bullet.reset(this.x, this.y);
+                bullet.anchor.setTo(0, 0.5);
+                console.log(bullet.x, bullet.y);
                 bullet.rotation = this.rotation + this.turret.rotation;
 
                 // this.level.bullets.add(bullet);
@@ -453,7 +453,8 @@ var BCW;
             this.body.velocity.setTo(0, 0);
         };
         Tank.prototype.update = function () {
-            this.game.debug.spriteInfo(this, 16, 16);
+            this.game.debug.inputInfo(16, 16);
+            this.game.debug.spriteInfo(this, 16, 116);
         };
         return Tank;
     })(Phaser.Sprite);

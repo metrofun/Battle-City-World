@@ -63,7 +63,6 @@ module BCW {
         damageAmount = 2;
         constructor(public owner:Tank, public x:number, public y:number) {
             super(owner.game, x, y, 'bullet');
-            this.anchor.setTo(0, 100);
             this.game.physics.enable(this, Phaser.Physics.ARCADE);
             this.checkWorldBounds = true;
             this.outOfBoundsKill = true;
@@ -72,15 +71,15 @@ module BCW {
             this.alive = false;
         }
         fire() {
-            // this.game.physics.arcade.velocityFromRotation(
-                // this.rotation,
-                // this.speed,
-                // this.body.velocity
-            // );
+            this.game.physics.arcade.velocityFromRotation(
+                this.rotation,
+                this.speed,
+                this.body.velocity
+            );
         }
         update() {
             if (this.visible) {
-                this.owner.game.debug.spriteInfo(this, 16, 116, 'blue');
+                this.owner.game.debug.spriteInfo(this, 16, 216);
             }
         }
     }
