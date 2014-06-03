@@ -77,7 +77,7 @@ module BCW {
             this.body.velocity.setTo(0, 0);
         }
         update() {
-            this.game.debug.spriteCoords(this, 16, 16);
+            this.game.debug.spriteInfo(this, 16, 16);
         }
     }
 }

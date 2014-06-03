@@ -1,7 +1,8 @@
 var gulp = require('gulp'),
     paths = {
         ts:  'modules/**/*.ts',
-        dest: 'build'
+        dest: 'build',
+        file: 'bcw.js'
     };
 
 gulp.task('typescript', function () {
@@ -10,7 +11,7 @@ gulp.task('typescript', function () {
     return gulp.src(paths.ts).pipe(ts({
         target: 'ES5',
         emitError: false,
-        out: 'bcw.js'
+        out: paths.file
     })).pipe(gulp.dest(paths.dest));
 });
 gulp.task('static-server', function (next) {
@@ -28,6 +29,14 @@ gulp.task('static-server', function (next) {
     });
 });
 gulp.task('watch', function () {
+    var livereload = require('gulp-livereload'),
+        server = livereload();
+
     gulp.watch(paths.ts, ['typescript']);
+
+    gulp.watch([paths.dest, paths.file].join('/')).on('change', function (file) {
+        console.log(file);
+        server.changed(file.path);
+    });
 });
 gulp.task('default', ['typescript', 'watch', 'static-server']);
