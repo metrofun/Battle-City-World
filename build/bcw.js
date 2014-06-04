@@ -217,6 +217,7 @@ var BCW;
             this.fireRate = 0;
             this.nextFire = 0;
             this.currentSpeed = 0;
+            this.bullets = [];
             this.enemiesTotal = 10;
         }
         Level1.prototype.create = function () {
@@ -236,8 +237,8 @@ var BCW;
                 this.tanks.add(new BCW.Tank(this.game, this.game.world.randomX, this.game.world.randomY));
             }
 
-            this.bullets = this.game.add.group();
             this.tanks.forEach(function (tank) {
+                this.bullets.push(tank.bullets);
             }, this);
 
             //  Explosion pool
@@ -254,7 +255,7 @@ var BCW;
         };
 
         Level1.prototype.update = function () {
-            this.game.physics.arcade.overlap(this.bullets, this.tanks, this.onBulletHit, null, this);
+            this.game.physics.arcade.overlap(this.tanks, this.bullets, this.onBulletHit, null, this);
             this.game.physics.arcade.collide(this.tanks, this.tanks);
             this.tanks.callAll('update');
 
@@ -264,6 +265,13 @@ var BCW;
         };
 
         Level1.prototype.onBulletHit = function (tank, bullet) {
+            bullet.kill();
+
+            if (!tank.damage(1).alive) {
+                var explosionAnimation = this.explosions.getFirstExists(false);
+                explosionAnimation.reset(tank.x, tank.y);
+                explosionAnimation.play('kaboom', 30, false, true);
+            }
         };
 
         Level1.prototype.bulletHitPlayer = function (tank, bullet) {

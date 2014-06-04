@@ -89,7 +89,7 @@ module BCW {
         nextFire = 0;
         currentSpeed = 0;
         explosions:Phaser.Group;
-        bullets:Phaser.Group;
+        bullets = [];
         tanks:Phaser.Group;
         land:Phaser.TileSprite;
         tank:Tank;
@@ -112,8 +112,8 @@ module BCW {
                 this.tanks.add(new Tank(this.game, this.game.world.randomX, this.game.world.randomY));
             }
 
-            this.bullets = this.game.add.group();
             this.tanks.forEach(function (tank:Tank) {
+                this.bullets.push(tank.bullets);
             }, this);
 
             //  Explosion pool
@@ -130,7 +130,7 @@ module BCW {
         }
 
         update() {
-            this.game.physics.arcade.overlap(this.bullets, this.tanks, this.onBulletHit, null, this);
+            this.game.physics.arcade.overlap(this.tanks, this.bullets, this.onBulletHit, null, this);
             this.game.physics.arcade.collide(this.tanks, this.tanks);
             this.tanks.callAll('update');
 
@@ -140,6 +140,14 @@ module BCW {
         }
 
         onBulletHit(tank:Tank, bullet:Bullet) {
+            bullet.kill();
+
+            if (!tank.damage(1).alive) {
+                var explosionAnimation = this.explosions.getFirstExists(false);
+                explosionAnimation.reset(tank.x, tank.y);
+                explosionAnimation.play('kaboom', 30, false, true);
+            }
+
         }
 
         bulletHitPlayer(tank:Phaser.Sprite, bullet:Phaser.Sprite) {
