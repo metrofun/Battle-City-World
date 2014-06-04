@@ -6,10 +6,9 @@ module BCW {
         bullets: Phaser.Group;
         fireRate = 300; //ms
         nextFire = 0;
-        private gunpoint = new Phaser.Point();
 
-        constructor(public level:Level1, public x:number, public y:number) {
-            super(level.game, x, y, 'tank', 'tank1');
+        constructor(public game:Phaser.Game, public x:number, public y:number) {
+            super(game, x, y, 'tank', 'tank1');
             this.anchor.setTo(0.5, 0.5);
             this.game.physics.enable(this, Phaser.Physics.ARCADE);
             this.body.collideWorldBounds = true;
@@ -19,8 +18,12 @@ module BCW {
         private addSpriteChilds() {
             var shadow = new Phaser.Sprite(this.game, this.x, this.y, 'tank', 'shadow');
             shadow.z = 0;
+            shadow.x = 0;
+            shadow.y = 0;
             shadow.anchor.setTo(0.5, 0.5);
             this.turret = new Phaser.Sprite(this.game, this.x, this.y, 'tank', 'turret');
+            this.turret.x = 0;
+            this.turret.y = 0;
             this.turret.anchor.setTo(0.3, 0.5);
 
             this.addChild(shadow);
@@ -33,19 +36,6 @@ module BCW {
                 this.bullets.add(new Bullet(this, 0, 0));
             }
         }
-        private updateGunpoint() {
-            var gunpoint = this.world.clone(this.gunpoint);
-                    // .subtract(this.width / 2, this.height / 2);
-
-            // return Phaser.Point.rotate(
-                // this.gunpoint,
-                // this.gunpoint.x,
-                // this.gunpoint.y,
-                // this.rotation + this.turret.rotation,
-                // false,
-                // 0.7 * this.turret.height
-            // )
-        }
         fire() {
             var bullet:Bullet;
 
@@ -53,14 +43,9 @@ module BCW {
                 this.nextFire = this.game.time.now + this.fireRate;
 
                 bullet = this.bullets.getFirstExists(false);
-                this.updateGunpoint();
-                // bullet.x = this.x;
-                // bullet.y = this.y;
                 bullet.reset(this.x, this.y);
                 bullet.anchor.setTo(0, 0.5);
-                console.log(bullet.x, bullet.y);
                 bullet.rotation = this.rotation + this.turret.rotation;
-                // this.level.bullets.add(bullet);
 
                 bullet.fire();
             }
@@ -81,8 +66,7 @@ module BCW {
             this.body.velocity.setTo(0, 0);
         }
         update() {
-            this.game.debug.inputInfo(16, 16);
-            this.game.debug.spriteInfo(this, 16, 116)
+            // this.game.debug.inputInfo(16, 16);
         }
     }
 }

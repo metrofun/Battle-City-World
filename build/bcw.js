@@ -202,9 +202,9 @@ var BCW;
             this.game.physics.arcade.velocityFromRotation(this.rotation, this.speed, this.body.velocity);
         };
         Bullet.prototype.update = function () {
-            if (this.visible) {
-                this.owner.game.debug.spriteInfo(this, 16, 216);
-            }
+            // if (this.visible) {
+            // this.owner.game.debug.spriteInfo(this, 16, 216);
+            // }
         };
         return Bullet;
     })(Phaser.Sprite);
@@ -217,6 +217,7 @@ var BCW;
             this.fireRate = 0;
             this.nextFire = 0;
             this.currentSpeed = 0;
+            this.enemiesTotal = 10;
         }
         Level1.prototype.create = function () {
             this.game.world.setBounds(-1000, -1000, 2000, 2000);
@@ -225,16 +226,19 @@ var BCW;
             this.land = this.game.add.tileSprite(0, 0, 800, 600, 'earth');
             this.land.fixedToCamera = true;
 
-            this.tank = new BCW.Tank(this, 0, 0);
+            this.tank = new BCW.Tank(this.game, 0, 0);
             (new UserControl(this.game, this.tank)).enable();
 
             this.tanks = this.game.add.group();
             this.tanks.add(this.tank);
 
-            // for (var i = 0; i < enemiesTotal; i++) {
-            // this.tanks.add(new EnemyTank(i.toString(), this.game, this.tank, this.bullets));
-            // }
+            for (var i = 0; i < this.enemiesTotal; i++) {
+                this.tanks.add(new BCW.Tank(this.game, this.game.world.randomX, this.game.world.randomY));
+            }
+
             this.bullets = this.game.add.group();
+            this.tanks.forEach(function (tank) {
+            }, this);
 
             //  Explosion pool
             this.explosions = this.game.add.group();
@@ -377,15 +381,14 @@ var BCW;
 (function (BCW) {
     var Tank = (function (_super) {
         __extends(Tank, _super);
-        function Tank(level, x, y) {
-            _super.call(this, level.game, x, y, 'tank', 'tank1');
-            this.level = level;
+        function Tank(game, x, y) {
+            _super.call(this, game, x, y, 'tank', 'tank1');
+            this.game = game;
             this.x = x;
             this.y = y;
             this.BULLET_POOL_SIZE = 10;
             this.fireRate = 300;
             this.nextFire = 0;
-            this.gunpoint = new Phaser.Point();
             this.anchor.setTo(0.5, 0.5);
             this.game.physics.enable(this, Phaser.Physics.ARCADE);
             this.body.collideWorldBounds = true;
@@ -395,8 +398,12 @@ var BCW;
         Tank.prototype.addSpriteChilds = function () {
             var shadow = new Phaser.Sprite(this.game, this.x, this.y, 'tank', 'shadow');
             shadow.z = 0;
+            shadow.x = 0;
+            shadow.y = 0;
             shadow.anchor.setTo(0.5, 0.5);
             this.turret = new Phaser.Sprite(this.game, this.x, this.y, 'tank', 'turret');
+            this.turret.x = 0;
+            this.turret.y = 0;
             this.turret.anchor.setTo(0.3, 0.5);
 
             this.addChild(shadow);
@@ -409,18 +416,6 @@ var BCW;
                 this.bullets.add(new BCW.Bullet(this, 0, 0));
             }
         };
-        Tank.prototype.updateGunpoint = function () {
-            var gunpoint = this.world.clone(this.gunpoint);
-            // .subtract(this.width / 2, this.height / 2);
-            // return Phaser.Point.rotate(
-            // this.gunpoint,
-            // this.gunpoint.x,
-            // this.gunpoint.y,
-            // this.rotation + this.turret.rotation,
-            // false,
-            // 0.7 * this.turret.height
-            // )
-        };
         Tank.prototype.fire = function () {
             var bullet;
 
@@ -428,16 +423,10 @@ var BCW;
                 this.nextFire = this.game.time.now + this.fireRate;
 
                 bullet = this.bullets.getFirstExists(false);
-                this.updateGunpoint();
-
-                // bullet.x = this.x;
-                // bullet.y = this.y;
                 bullet.reset(this.x, this.y);
                 bullet.anchor.setTo(0, 0.5);
-                console.log(bullet.x, bullet.y);
                 bullet.rotation = this.rotation + this.turret.rotation;
 
-                // this.level.bullets.add(bullet);
                 bullet.fire();
             }
         };
@@ -453,8 +442,7 @@ var BCW;
             this.body.velocity.setTo(0, 0);
         };
         Tank.prototype.update = function () {
-            this.game.debug.inputInfo(16, 16);
-            this.game.debug.spriteInfo(this, 16, 116);
+            // this.game.debug.inputInfo(16, 16);
         };
         return Tank;
     })(Phaser.Sprite);

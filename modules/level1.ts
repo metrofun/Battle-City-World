@@ -78,9 +78,9 @@ module BCW {
             );
         }
         update() {
-            if (this.visible) {
-                this.owner.game.debug.spriteInfo(this, 16, 216);
-            }
+            // if (this.visible) {
+                // this.owner.game.debug.spriteInfo(this, 16, 216);
+            // }
         }
     }
     export class Level1 extends Phaser.State {
@@ -93,6 +93,7 @@ module BCW {
         tanks:Phaser.Group;
         land:Phaser.TileSprite;
         tank:Tank;
+        enemiesTotal = 10;
 
         create() {
             this.game.world.setBounds(-1000, -1000, 2000, 2000);
@@ -101,17 +102,19 @@ module BCW {
             this.land = this.game.add.tileSprite(0, 0, 800, 600, 'earth');
             this.land.fixedToCamera = true;
 
-            this.tank = new Tank(this, 0, 0);
+            this.tank = new Tank(this.game, 0, 0);
             (new UserControl(this.game, this.tank)).enable();
 
             this.tanks = this.game.add.group();
             this.tanks.add(this.tank);
 
-            // for (var i = 0; i < enemiesTotal; i++) {
-                // this.tanks.add(new EnemyTank(i.toString(), this.game, this.tank, this.bullets));
-            // }
+            for (var i = 0; i < this.enemiesTotal; i++) {
+                this.tanks.add(new Tank(this.game, this.game.world.randomX, this.game.world.randomY));
+            }
 
             this.bullets = this.game.add.group();
+            this.tanks.forEach(function (tank:Tank) {
+            }, this);
 
             //  Explosion pool
             this.explosions = this.game.add.group();
