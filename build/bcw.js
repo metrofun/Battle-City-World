@@ -265,9 +265,11 @@ var BCW;
         };
 
         Level1.prototype.onBulletHit = function (tank, bullet) {
+            tank.damage(1);
             bullet.kill();
 
-            if (!tank.damage(1).alive) {
+            if (!tank.alive) {
+                tank.kill();
                 var explosionAnimation = this.explosions.getFirstExists(false);
                 explosionAnimation.reset(tank.x, tank.y);
                 explosionAnimation.play('kaboom', 30, false, true);
@@ -396,7 +398,11 @@ var BCW;
             this.y = y;
             this.BULLET_POOL_SIZE = 10;
             this.fireRate = 300;
+            this.health = 2;
             this.nextFire = 0;
+            this.alive = true;
+            this.exists = true;
+            this.visible = true;
             this.anchor.setTo(0.5, 0.5);
             this.game.physics.enable(this, Phaser.Physics.ARCADE);
             this.body.collideWorldBounds = true;

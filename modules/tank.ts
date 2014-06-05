@@ -5,10 +5,14 @@ module BCW {
         turret: Phaser.Sprite;
         bullets: Phaser.Group;
         fireRate = 300; //ms
+        health = 2;
         nextFire = 0;
 
         constructor(public game:Phaser.Game, public x:number, public y:number) {
             super(game, x, y, 'tank', 'tank1');
+            this.alive = true;
+            this.exists = true;
+            this.visible = true;
             this.anchor.setTo(0.5, 0.5);
             this.game.physics.enable(this, Phaser.Physics.ARCADE);
             this.body.collideWorldBounds = true;

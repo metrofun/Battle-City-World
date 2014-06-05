@@ -140,14 +140,15 @@ module BCW {
         }
 
         onBulletHit(tank:Tank, bullet:Bullet) {
+            tank.damage(1);
             bullet.kill();
 
-            if (!tank.damage(1).alive) {
+            if (!tank.alive) {
+                tank.kill();
                 var explosionAnimation = this.explosions.getFirstExists(false);
                 explosionAnimation.reset(tank.x, tank.y);
                 explosionAnimation.play('kaboom', 30, false, true);
             }
-
         }
 
         bulletHitPlayer(tank:Phaser.Sprite, bullet:Phaser.Sprite) {
